@@ -17,6 +17,7 @@ from ..db import (
     ST_DECLINED,
     ST_DONE,
     ST_FORM,
+    ST_NEW,
     ST_RECEIPT_SENT,
     ST_RECEIPT_WAIT,
     ST_STAGE2,
@@ -236,7 +237,8 @@ async def got_username_text(message: Message, state: FSMContext, db, sheets, con
     await _save_username(message, state, db, sheets, config, uname)
 
 
-@router.callback_query(Form.username, F.data == "use_tg_username")
+# Holat filtri yo'q: bot qayta ishga tushsa FSM o'chadi, lekin tugma ishlashi shart.
+@router.callback_query(F.data == "use_tg_username")
 async def cb_use_tg_username(cb: CallbackQuery, state: FSMContext, db, sheets, config, **_):
     await cb.answer()
     uname = f"@{cb.from_user.username}" if cb.from_user.username else "—"
@@ -244,7 +246,7 @@ async def cb_use_tg_username(cb: CallbackQuery, state: FSMContext, db, sheets, c
                          user_id=cb.from_user.id)
 
 
-@router.callback_query(Form.username, F.data == "no_username")
+@router.callback_query(F.data == "no_username")
 async def cb_no_username(cb: CallbackQuery, state: FSMContext, db, sheets, config, **_):
     await cb.answer()
     await _save_username(cb.message, state, db, sheets, config, "—",
@@ -253,6 +255,18 @@ async def cb_no_username(cb: CallbackQuery, state: FSMContext, db, sheets, confi
 
 async def _save_username(message, state, db, sheets, config, uname, user_id=None):
     uid = user_id or message.from_user.id
+    current = await db.get(uid)
+
+    # Anketa ma'lumotlari yo'q — noldan boshlaymiz
+    if not current or not current.get("full_name") or not current.get("phone"):
+        await state.clear()
+        await message.answer(t.UNKNOWN, reply_markup=kb.start_kb())
+        return
+
+    # Eskirgan tugma: foydalanuvchi allaqachon keyingi bosqichda
+    if current.get("status") not in (ST_NEW, ST_FORM):
+        return
+
     user = await db.update(uid, username=uname, status=ST_RECEIPT_WAIT)
     sync.push(db, sheets, user)
     await state.clear()
@@ -439,14 +453,31 @@ async def cmd_status(message: Message, db, **_):
     )
 
 
+async def _resume_form(message: Message, state: FSMContext, user: dict) -> None:
+    """Bot qayta ishga tushgach yo'qolgan anketa holatini tiklaydi."""
+    if not user.get("full_name"):
+        await state.set_state(Form.full_name)
+        await message.answer(t.ASK_FULL_NAME, reply_markup=kb.REMOVE)
+    elif not user.get("phone"):
+        await state.set_state(Form.phone)
+        await message.answer(t.ASK_PHONE, reply_markup=kb.phone_kb())
+    else:
+        await state.set_state(Form.username)
+        await message.answer(
+            t.ASK_USERNAME, reply_markup=kb.username_kb(message.from_user.username)
+        )
+
+
 @router.message(StateFilter(None), F.chat.type == "private")
-async def fallback(message: Message, db, config, **_):
+async def fallback(message: Message, state: FSMContext, db, config, **_):
     """Holatsiz kelgan xabar — foydalanuvchini o'z bosqichiga qaytaramiz."""
     user = await db.get(message.from_user.id)
     status = user.get("status") if user else None
 
     if status == ST_RECEIPT_SENT:
         await message.answer(t.WAIT_ADMIN)
+    elif status == ST_FORM:
+        await _resume_form(message, state, user)
     elif status in (ST_STAGE2, ST_STAGE3, ST_STAGE4):
         stage = {ST_STAGE2: 2, ST_STAGE3: 3, ST_STAGE4: 4}[status]
         await show_stage(message, stage)
@@ -460,3 +491,9 @@ async def fallback(message: Message, db, config, **_):
         )
     else:
         await message.answer(t.UNKNOWN, reply_markup=kb.start_kb())
+
+
+@router.callback_query()
+async def stale_callback(cb: CallbackQuery, **_):
+    """Hech bir handler ushlamagan tugma — jim qolmasin."""
+    await cb.answer("Bu tugma eskirgan. /start bosing.", show_alert=True)

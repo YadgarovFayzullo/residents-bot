@@ -263,7 +263,7 @@ async def run():
     await U.cmd_start(m, FakeState(), db=db, sheets=sheets, bot=bot, config=cfg)
     check("3-bosqichdan davom etdi", "rezidenti" in m.replies[-1]["text"])
     m = FakeMessage("salom", u3)
-    await U.fallback(m, db=db, config=cfg)
+    await U.fallback(m, FakeState(), db=db, config=cfg)
     check("Tasodifiy matn ham bosqichga qaytardi", "rezidenti" in m.replies[-1]["text"])
 
     print("\n【12】 Guruh ulanmagan bo'lsa (havola yaratilmaydi)")
