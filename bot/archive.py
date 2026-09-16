@@ -7,7 +7,6 @@ istalgan vaqtda ochib ko'rish mumkin.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 log = logging.getLogger(__name__)
 
@@ -30,15 +29,3 @@ async def send_receipt(bot, chat_id: int, file_id: str, ftype: str,
                                     reply_markup=markup)
     return await bot.send_document(chat_id, file_id, caption=caption,
                                    reply_markup=markup)
-
-
-def archive_caption(user: dict[str, Any], user_id: int, when: str) -> str:
-    """Arxiv kanalidagi izoh — keyin qidiruv orqali topish uchun."""
-    return (
-        "🧾 <b>Chek arxivi</b>\n\n"
-        f"👤 {user.get('full_name') or '—'}\n"
-        f"📞 {user.get('phone') or '—'}\n"
-        f"💬 {user.get('username') or '—'}\n"
-        f"🆔 <code>{user_id}</code>\n"
-        f"🕒 {when}"
-    )

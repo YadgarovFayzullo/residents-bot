@@ -329,16 +329,6 @@ async def got_receipt(message: Message, state: FSMContext, db, sheets, bot, conf
     archive_chat = config.receipt_archive_id or config.admin_group_id
     archive_msg_id = None
 
-    if config.receipt_archive_id:
-        try:
-            msg = await archive.send_receipt(
-                bot, config.receipt_archive_id, file_id, ftype,
-                archive.archive_caption(user, uid, when),
-            )
-            archive_msg_id = msg.message_id
-        except Exception as e:
-            log.error("Chek arxivga saqlanmadi (%s): %s", config.receipt_archive_id, e)
-
     caption = (
         "🧾 <b>Yangi chek — tekshiruv kutilmoqda</b>\n\n"
         f"👤 <b>Ism familiya:</b> {user.get('full_name')}\n"
@@ -348,13 +338,26 @@ async def got_receipt(message: Message, state: FSMContext, db, sheets, bot, conf
         f"🕒 {when}"
     )
     markup = kb.review_kb(uid)
-    targets = list(config.admin_ids)
+
+    # Tekshiruv bitta joyda — chek kanalida. Tugmalar faqat o'sha nusxada.
+    if config.receipt_archive_id:
+        try:
+            msg = await archive.send_receipt(
+                bot, config.receipt_archive_id, file_id, ftype, caption, markup,
+            )
+            archive_msg_id = msg.message_id
+        except Exception as e:
+            log.error("Chek arxivga saqlanmadi (%s): %s", config.receipt_archive_id, e)
+
+    # Kanalga tushgan bo'lsa — shaxsiy nusxa kerak emas. Tushmasa, chek
+    # yo'qolib ketmasligi uchun adminlarga yuboramiz.
+    targets = [] if archive_msg_id else list(config.admin_ids)
     # Admin guruhida faqat ariza kartochkalari turadi. Chek u yerga alohida
     # arxiv bo'lmagandagina boradi — aks holda guruh aralashib ketadi.
     if config.admin_group_id and not config.receipt_archive_id:
         targets.append(config.admin_group_id)
 
-    sent = 0
+    sent = 1 if archive_msg_id else 0
     for target in targets:
         try:
             msg = await archive.send_receipt(bot, target, file_id, ftype, caption, markup)

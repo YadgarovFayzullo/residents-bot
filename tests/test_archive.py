@@ -52,18 +52,41 @@ async def main():
     check("oddiy chat uchun havola yo'q", archive.message_link(12345, 42) == "")
     check("msg_id bo'lmasa bo'sh", archive.message_link(ARCHIVE_ID, None) == "")
 
-    print("\n【2】 Chek arxivga saqlanadi")
+    print("\n【2】 Chek arxivga saqlanadi, tekshiruv faqat kanalda")
     cfg, bot = Cfg(), FakeBot()
     u = await send_receipt(db, cfg, bot)
     check("arxivga yuborildi", any(c == ARCHIVE_ID for c, _ in bot.sent))
-    check("adminga yuborildi", any(c == ADMIN_ID for c, _ in bot.sent))
-    # Admin guruhida faqat ariza kartochkalari turishi kerak
-    check("admin guruhiga yuborilmadi (arxiv alohida)",
-          not any(c == ADMIN_GROUP for c, _ in bot.sent))
+    check("kanaldagi nusxada tugmalar bor",
+          any(c == ARCHIVE_ID and m is not None for c, m in bot.markups))
+    # Tugmalar bitta joyda bo'lsin — botda takror tekshiruv bo'lmasin
+    check("adminga shaxsiy nusxa yuborilmadi",
+          not any(c == ADMIN_ID for c, _ in bot.sent))
+    # Admin guruhida faqat ariza kartochkalari turadi — chek u yerga tushmaydi
+    group_files = [t for c, t in bot.sent
+                   if c == ADMIN_GROUP and t.startswith(("[PHOTO]", "[DOC]"))]
+    check("admin guruhiga chek tushmadi", not group_files, f"-> {group_files}")
     check("message_id saqlandi", bool(u["receipt_msg_id"]), f"-> {u['receipt_msg_id']}")
     check("havola saqlandi", (u["receipt_link"] or "").startswith("https://t.me/c/2233445566/"),
           f"-> {u['receipt_link']}")
     check("chek sanasi saqlandi", bool(u["receipt_at"]), f"-> {u['receipt_at']}")
+
+    print("\n【2b】 Kanal ishlamasa — chek yo'qolmaydi, adminlarga tushadi")
+
+    class BrokenArchiveBot(FakeBot):
+        async def send_photo(self, chat_id, *a, **kw):
+            if chat_id == ARCHIVE_ID:
+                raise RuntimeError("kanalga yuborib bo'lmadi")
+            return await super().send_photo(chat_id, *a, **kw)
+
+    db_b = Database(tempfile.mktemp(suffix=".db")); await db_b.init()
+    await db_b.ensure_user(USER_ID, "aliuz")
+    await db_b.update(USER_ID, full_name="Ali Valiyev", phone="+998901234567")
+    bot_b = BrokenArchiveBot()
+    ub = await send_receipt(db_b, Cfg(), bot_b)
+    check("chek qabul qilindi", ub["receipt_status"] == "pending")
+    check("adminga zaxira nusxa ketdi", any(c == ADMIN_ID for c, _ in bot_b.sent))
+    check("zaxira nusxada tugmalar bor",
+          any(c == ADMIN_ID and m is not None for c, m in bot_b.markups))
 
     print("\n【3】 Havola Google Sheets qatoriga tushadi")
     row = row_from_user(u, 1)

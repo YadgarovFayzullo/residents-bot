@@ -111,6 +111,7 @@ class FakeBot:
         self.sent: list[tuple[int, str]] = []
         self.edits: list[tuple[int, int, str]] = []
         self.deleted: list[tuple[int, int]] = []
+        self.markups: list[tuple[int, object]] = []   # (chat_id, reply_markup)
         self.invite_ok = invite_ok
         self.invites: list[str] = []
         self.invite_calls: list[dict] = []
@@ -131,11 +132,13 @@ class FakeBot:
 
     async def send_photo(self, chat_id, file_id, caption=None, reply_markup=None, **kw):
         self.sent.append((chat_id, f"[PHOTO] {caption}"))
+        self.markups.append((chat_id, reply_markup))
         OUT.append((f"bot->{chat_id}", f"[PHOTO] {caption}"))
         return self._sent_msg()
 
     async def send_document(self, chat_id, file_id, caption=None, reply_markup=None, **kw):
         self.sent.append((chat_id, f"[DOC] {caption}"))
+        self.markups.append((chat_id, reply_markup))
         OUT.append((f"bot->{chat_id}", f"[DOC] {caption}"))
         return self._sent_msg()
 
