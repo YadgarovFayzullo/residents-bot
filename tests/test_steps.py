@@ -70,8 +70,7 @@ async def main():
           f"-> {sh.rows[USER_ID]['phone']}")
 
     print("\n【5】 Username → chek kutilmoqda")
-    await U.got_username_text(FakeMessage(user=me, text="@aliuz"), st,
-                              db=db, sheets=sh, config=cfg)
+    await U.got_username_text(FakeMessage(user=me, text="@aliuz"), st, **D)
     await sync.drain()
     check("username jadvalda", sh.rows[USER_ID]["username"] == "@aliuz")
     check("holat = Chek kutilmoqda", status_of(sh) == "Chek kutilmoqda",
@@ -97,7 +96,7 @@ async def main():
               f"-> {status_of(sh)}")
 
     print("\n【9】 Rad etgan foydalanuvchi ham ko‘rinadi")
-    await U.cb_decline(FakeCallback("decline:4", user=me), db=db, sheets=sh)
+    await U.cb_decline(FakeCallback("decline:4", user=me), **D)
     await sync.drain()
     check("holat = Rad etdi", status_of(sh) == "Rad etdi", f"-> {status_of(sh)}")
 

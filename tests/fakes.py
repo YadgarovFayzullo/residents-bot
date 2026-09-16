@@ -109,6 +109,7 @@ class FakeBot:
     """Adminlarga va foydalanuvchilarga yuborilgan xabarlarni yozib boradi."""
     def __init__(self, invite_ok=True):
         self.sent: list[tuple[int, str]] = []
+        self.edits: list[tuple[int, int, str]] = []
         self.invite_ok = invite_ok
         self.invites: list[str] = []
         self.invite_calls: list[dict] = []
@@ -116,6 +117,12 @@ class FakeBot:
     async def send_message(self, chat_id, text, reply_markup=None, **kw):
         self.sent.append((chat_id, text))
         OUT.append((f"bot->{chat_id}", text))
+        return self._sent_msg()
+
+    async def edit_message_text(self, text, chat_id=None, message_id=None, **kw):
+        self.edits.append((chat_id, message_id, text))
+        OUT.append((f"edit->{chat_id}", text))
+        return SimpleNamespace(message_id=message_id)
 
     async def send_photo(self, chat_id, file_id, caption=None, reply_markup=None, **kw):
         self.sent.append((chat_id, f"[PHOTO] {caption}"))

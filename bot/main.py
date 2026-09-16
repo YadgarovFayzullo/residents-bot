@@ -11,6 +11,7 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand
 
+from . import card
 from .config import load_config
 from .db import Database
 from .handlers import admin, group, user
@@ -73,6 +74,11 @@ async def main() -> None:
         log.warning("Chek arxivi sozlanmagan! RECEIPT_ARCHIVE_ID (yoki ADMIN_GROUP_ID) "
                     "ni .env ga qo'shing — aks holda cheklarga havola saqlanmaydi.")
 
+    if config.admin_group_id:
+        log.info("Ariza kartochkalari: %s", config.admin_group_id)
+    else:
+        log.warning("ADMIN_GROUP_ID bo'sh — ariza kartochkalari yuborilmaydi.")
+
     saved_group = await db.get_setting("private_group_id")
     if not config.private_group_id and not saved_group:
         log.warning("Yopiq guruh ulanmagan. Botni guruhga qo'shib, admin qiling — "
@@ -99,6 +105,7 @@ async def main() -> None:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
         await drain()          # fondagi Sheets yozuvlari yo'qolmasin
+        await card.drain()
         await bot.session.close()
 
 

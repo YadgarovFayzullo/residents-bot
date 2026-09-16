@@ -100,11 +100,11 @@ async def run():
     # ---------------------------------------------------------- 3. Username
     print("\n【3】 Telegram username")
     m = FakeMessage("@ab", u)
-    await U.got_username_text(m, st, db=db, sheets=FakeSheets(), config=cfg)
+    await U.got_username_text(m, st, db=db, sheets=FakeSheets(), bot=bot, config=cfg)
     check("Qisqa username rad etildi", "❗️" in last())
 
     cb = FakeCallback("use_tg_username", u)
-    await U.cb_use_tg_username(cb, st, db=db, sheets=FakeSheets(), config=cfg)
+    await U.cb_use_tg_username(cb, st, db=db, sheets=FakeSheets(), bot=bot, config=cfg)
     rec = await db.get(USER_ID)
     check("Username saqlandi", rec["username"] == "@aliuz", f"-> {rec['username']}")
     check("Xulosa ko'rsatildi", "Ma’lumotlaringiz" in OUT[-2][1])
@@ -246,7 +246,7 @@ async def run():
     await db.update(2002, full_name="Bek Bekov", phone="+998901112233",
                     username="@rad", status="stage2")
     cb = FakeCallback("decline:2", u2)
-    await U.cb_decline(cb, db=db, sheets=sheets)
+    await U.cb_decline(cb, db=db, sheets=sheets, bot=bot, config=cfg)
     rec = await db.get(2002)
     check("Rad etish yozildi", rec["agree_stage2"].startswith("Yo‘q"))
     check("Holat = rad etdi", rec["status"] == "declined")

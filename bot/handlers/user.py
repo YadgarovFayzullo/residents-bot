@@ -10,6 +10,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from .. import archive
+from .. import card
 from .. import keyboards as kb
 from .. import sync
 from .. import texts as t
@@ -89,6 +90,7 @@ async def finish_application(message: Message, user_id: int, db, sheets, bot, co
         finished_at=now(),
     )
     await sync.push_now(db, sheets, user)
+    card.refresh(bot, db, config, user)
 
     if link:
         await message.answer(
@@ -227,33 +229,33 @@ async def bad_phone(message: Message, **_):
 
 # ---------------------------------------------------------------- 3. Username
 @router.message(Form.username, F.text)
-async def got_username_text(message: Message, state: FSMContext, db, sheets, config, **_):
+async def got_username_text(message: Message, state: FSMContext, db, sheets, bot, config, **_):
     uname = clean_username(message.text)
     if not uname:
         await message.answer(
             t.ERR_USERNAME, reply_markup=kb.username_kb(message.from_user.username)
         )
         return
-    await _save_username(message, state, db, sheets, config, uname)
+    await _save_username(message, state, db, sheets, bot, config, uname)
 
 
 # Holat filtri yo'q: bot qayta ishga tushsa FSM o'chadi, lekin tugma ishlashi shart.
 @router.callback_query(F.data == "use_tg_username")
-async def cb_use_tg_username(cb: CallbackQuery, state: FSMContext, db, sheets, config, **_):
+async def cb_use_tg_username(cb: CallbackQuery, state: FSMContext, db, sheets, bot, config, **_):
     await cb.answer()
     uname = f"@{cb.from_user.username}" if cb.from_user.username else "—"
-    await _save_username(cb.message, state, db, sheets, config, uname,
+    await _save_username(cb.message, state, db, sheets, bot, config, uname,
                          user_id=cb.from_user.id)
 
 
 @router.callback_query(F.data == "no_username")
-async def cb_no_username(cb: CallbackQuery, state: FSMContext, db, sheets, config, **_):
+async def cb_no_username(cb: CallbackQuery, state: FSMContext, db, sheets, bot, config, **_):
     await cb.answer()
-    await _save_username(cb.message, state, db, sheets, config, "—",
+    await _save_username(cb.message, state, db, sheets, bot, config, "—",
                          user_id=cb.from_user.id)
 
 
-async def _save_username(message, state, db, sheets, config, uname, user_id=None):
+async def _save_username(message, state, db, sheets, bot, config, uname, user_id=None):
     uid = user_id or message.from_user.id
     current = await db.get(uid)
 
@@ -269,6 +271,7 @@ async def _save_username(message, state, db, sheets, config, uname, user_id=None
 
     user = await db.update(uid, username=uname, status=ST_RECEIPT_WAIT)
     sync.push(db, sheets, user)
+    card.refresh(bot, db, config, user)
     await state.clear()
     await message.answer(t.summary(user))
     await message.answer(t.PROJECT_SELECT, reply_markup=kb.receipt_kb(config.irshod_url))
@@ -367,6 +370,7 @@ async def got_receipt(message: Message, state: FSMContext, db, sheets, bot, conf
     else:
         log.warning("Chek arxivlanmadi (RECEIPT_ARCHIVE_ID / ADMIN_GROUP_ID bo'sh?)")
     await sync.push_now(db, sheets, user)
+    card.refresh(bot, db, config, user)
 
 
 @router.message(Form.receipt)
@@ -403,11 +407,12 @@ async def cb_agree(cb: CallbackQuery, db, sheets, bot, config, **_):
         await finish_application(cb.message, cb.from_user.id, db, sheets, bot, config)
     else:
         sync.push(db, sheets, user)
+        card.refresh(bot, db, config, user)
         await show_stage(cb.message, stage + 1)
 
 
 @router.callback_query(F.data.startswith("decline:"))
-async def cb_decline(cb: CallbackQuery, db, sheets, **_):
+async def cb_decline(cb: CallbackQuery, db, sheets, bot, config, **_):
     stage = int(cb.data.split(":")[1])
     await cb.answer()
     try:
@@ -419,6 +424,7 @@ async def cb_decline(cb: CallbackQuery, db, sheets, **_):
         cb.from_user.id, **{field: f"Yo‘q ({now()})"}, status=ST_DECLINED
     )
     sync.push(db, sheets, user)
+    card.refresh(bot, db, config, user)
     await cb.message.answer(t.DECLINED, reply_markup=kb.restart_kb())
 
 

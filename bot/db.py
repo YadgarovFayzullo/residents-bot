@@ -56,7 +56,8 @@ CREATE TABLE IF NOT EXISTS users (
     finished_at    TEXT,
     sheet_row      INTEGER,
     sheet_synced   INTEGER DEFAULT 0,
-    invite_expires TEXT
+    invite_expires TEXT,
+    admin_msg_id   INTEGER
 );
 CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
@@ -73,7 +74,7 @@ _ALLOWED = {
     "receipt_at", "reviewed_by", "reviewed_at",
     "reject_reason", "agree_stage2", "agree_stage3", "agree_final",
     "invite_link", "status", "finished_at", "sheet_row", "sheet_synced",
-    "invite_expires",
+    "invite_expires", "admin_msg_id",
 }
 
 
@@ -97,6 +98,7 @@ class Database:
                 ("receipt_msg_id", "INTEGER"),
                 ("receipt_link", "TEXT"),
                 ("receipt_at", "TEXT"),
+                ("admin_msg_id", "INTEGER"),
             ):
                 if col not in have:
                     await db.execute(f"ALTER TABLE users ADD COLUMN {col} {ddl}")

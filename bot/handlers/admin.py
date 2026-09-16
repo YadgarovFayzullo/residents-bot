@@ -9,6 +9,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from .. import archive
+from .. import card
 from .. import keyboards as kb
 from .. import sync
 from .. import texts as t
@@ -275,6 +276,7 @@ async def cb_approve(cb: CallbackQuery, db, sheets, bot, config, **_):
         status=ST_STAGE2,
     )
     await sync.push_now(db, sheets, user)
+    card.refresh(bot, db, config, user)
     await _mark_caption(cb, f"✅ TASDIQLANDI — @{cb.from_user.username or cb.from_user.id}")
 
     try:
@@ -326,6 +328,7 @@ async def got_reject_reason(message: Message, state: FSMContext, db, sheets, bot
         status=ST_RECEIPT_WAIT,
     )
     await sync.push_now(db, sheets, user)
+    card.refresh(bot, db, config, user)
     await message.answer(f"❌ <code>{user_id}</code> uchun chek rad etildi.")
 
     try:
