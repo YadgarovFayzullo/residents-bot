@@ -91,21 +91,28 @@ class SheetsSync:
         worksheet_name: str,
         webhook_url: str = "",
         webhook_secret: str = "",
+        credentials_json: str = "",
     ):
         self.sheet_id = sheet_id
         self.credentials_file = Path(credentials_file)
         self.worksheet_name = worksheet_name
         self.webhook_url = (webhook_url or "").strip()
         self.webhook_secret = webhook_secret or ""
+        # Fayl joylay olmaydigan muhitlar uchun (Railway va h.k.)
+        self.credentials_json = (credentials_json or "").strip()
         self._ws = None
         self._lock = asyncio.Lock()
         self.last_error: str | None = None
 
     @property
+    def has_credentials(self) -> bool:
+        return bool(self.credentials_json) or self.credentials_file.exists()
+
+    @property
     def mode(self) -> str:
         if self.webhook_url:
             return "webhook"
-        if self.sheet_id and self.credentials_file.exists():
+        if self.sheet_id and self.has_credentials:
             return "service"
         return "off"
 
@@ -161,9 +168,14 @@ class SheetsSync:
             "https://www.googleapis.com/auth/spreadsheets",
             "https://www.googleapis.com/auth/drive",
         ]
-        creds = Credentials.from_service_account_file(
-            str(self.credentials_file), scopes=scopes
-        )
+        if self.credentials_json:
+            creds = Credentials.from_service_account_info(
+                json.loads(self.credentials_json), scopes=scopes
+            )
+        else:
+            creds = Credentials.from_service_account_file(
+                str(self.credentials_file), scopes=scopes
+            )
         client = gspread.authorize(creds)
         book = client.open_by_key(self.sheet_id)
         try:
@@ -273,8 +285,11 @@ class SheetsSync:
 
         if not self.sheet_id:
             return False, "SHEET_ID .env faylda ko‘rsatilmagan"
-        if not self.credentials_file.exists():
-            return False, f"Credentials fayl topilmadi: {self.credentials_file}"
+        if not self.has_credentials:
+            return False, (
+                f"Credentials topilmadi: {self.credentials_file} fayli ham, "
+                "GOOGLE_CREDENTIALS_JSON o‘zgaruvchisi ham yo‘q"
+            )
         try:
             ws = await asyncio.to_thread(self._connect)
             title = await asyncio.to_thread(lambda: ws.spreadsheet.title)

@@ -36,6 +36,7 @@ class Config:
     sheet_webhook_url: str = ""
     sheet_webhook_secret: str = ""
     credentials_file: Path = BASE_DIR / "credentials.json"
+    credentials_json: str = ""
     db_path: Path = BASE_DIR / "data" / "bot.db"
     irshod_url: str = "https://irshod.uz"
     invite_expire_days: int = 7
@@ -44,7 +45,9 @@ class Config:
     def sheets_enabled(self) -> bool:
         if self.sheet_webhook_url:
             return True
-        return bool(self.sheet_id) and self.credentials_file.exists()
+        if not self.sheet_id:
+            return False
+        return bool(self.credentials_json) or self.credentials_file.exists()
 
     def is_admin(self, user_id: int) -> bool:
         return user_id in self.admin_ids
@@ -72,6 +75,7 @@ def load_config() -> Config:
         credentials_file=Path(
             os.getenv("GOOGLE_CREDENTIALS_FILE", str(BASE_DIR / "credentials.json"))
         ),
+        credentials_json=os.getenv("GOOGLE_CREDENTIALS_JSON", "").strip(),
         db_path=Path(os.getenv("DB_PATH", str(BASE_DIR / "data" / "bot.db"))),
         irshod_url=os.getenv("IRSHOD_URL", "https://irshod.uz").strip(),
         invite_expire_days=max(1, int(os.getenv("INVITE_EXPIRE_DAYS", "7") or 7)),

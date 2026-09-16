@@ -49,6 +49,7 @@ async def main() -> None:
         config.sheet_name,
         config.sheet_webhook_url,
         config.sheet_webhook_secret,
+        config.credentials_json,
     )
     ok, info = await sheets.check()
     log.info("Google Sheets [%s]: %s — %s", sheets.mode,
