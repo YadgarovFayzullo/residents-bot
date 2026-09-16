@@ -110,6 +110,7 @@ class FakeBot:
     def __init__(self, invite_ok=True):
         self.sent: list[tuple[int, str]] = []
         self.edits: list[tuple[int, int, str]] = []
+        self.deleted: list[tuple[int, int]] = []
         self.invite_ok = invite_ok
         self.invites: list[str] = []
         self.invite_calls: list[dict] = []
@@ -118,6 +119,10 @@ class FakeBot:
         self.sent.append((chat_id, text))
         OUT.append((f"bot->{chat_id}", text))
         return self._sent_msg()
+
+    async def delete_message(self, chat_id, message_id, **kw):
+        self.deleted.append((chat_id, message_id))
+        OUT.append((f"del->{chat_id}", str(message_id)))
 
     async def edit_message_text(self, text, chat_id=None, message_id=None, **kw):
         self.edits.append((chat_id, message_id, text))

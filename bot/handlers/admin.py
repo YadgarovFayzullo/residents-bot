@@ -241,6 +241,44 @@ async def cmd_arxiv(message: Message, bot, config, **_):
         )
 
 
+@router.message(Command("reset"))
+async def cmd_reset(message: Message, db, bot, config, **_):
+    """/reset <ID...> — arizani butunlay o'chiradi, odam 1-bosqichdan boshlaydi."""
+    if not _is_admin(message.from_user.id, config):
+        return
+
+    ids = [p for p in (message.text or "").split()[1:] if p.lstrip("-").isdigit()]
+    if not ids:
+        await message.answer(
+            "🔄 <b>Arizani noldan boshlash</b>\n\n"
+            "<code>/reset 123456789</code> — bitta odam\n"
+            "<code>/reset 111 222</code> — bir nechta\n\n"
+            "Yozuv butunlay o‘chadi: odam /start bosganda anketa qaytadan boshlanadi.\n"
+            "<i>Jadvaldagi qatori yangi ma’lumot bilan ustiga yoziladi.</i>"
+        )
+        return
+
+    lines = []
+    for raw in ids:
+        uid = int(raw)
+        user = await db.get(uid)
+        if not user:
+            lines.append(f"• <code>{uid}</code> — topilmadi")
+            continue
+
+        # Admin guruhidagi kartochkani ham olib tashlaymiz
+        if user.get("admin_msg_id") and config.admin_group_id:
+            try:
+                await bot.delete_message(config.admin_group_id, user["admin_msg_id"])
+            except Exception as e:
+                log.info("Kartochka o'chmadi (%s): %s", uid, e)
+
+        await db.delete(uid)
+        lines.append(f"• <code>{uid}</code> — {user.get('full_name') or '—'} o‘chirildi")
+
+    await message.answer("🔄 <b>Tozalandi</b>\n\n" + "\n".join(lines))
+
+
 @router.message(Command("resync"))
 async def cmd_resync(message: Message, db, sheets, config, **_):
     """Jadvaldagi barcha qatorlarni qaytadan yozadi (ustunlar o'zgarganda)."""

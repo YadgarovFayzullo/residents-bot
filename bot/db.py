@@ -177,6 +177,13 @@ class Database:
             )
             await db.commit()
 
+    async def delete(self, user_id: int) -> bool:
+        """Yozuvni butunlay o'chiradi — ariza noldan boshlanadi."""
+        async with aiosqlite.connect(self.path) as db:
+            cur = await db.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+            await db.commit()
+            return cur.rowcount > 0
+
     async def list_by_status(self, status: str) -> list[dict[str, Any]]:
         async with aiosqlite.connect(self.path) as db:
             db.row_factory = aiosqlite.Row
