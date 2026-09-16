@@ -57,7 +57,9 @@ async def main():
     u = await send_receipt(db, cfg, bot)
     check("arxivga yuborildi", any(c == ARCHIVE_ID for c, _ in bot.sent))
     check("adminga yuborildi", any(c == ADMIN_ID for c, _ in bot.sent))
-    check("admin guruhiga yuborildi", any(c == ADMIN_GROUP for c, _ in bot.sent))
+    # Admin guruhida faqat ariza kartochkalari turishi kerak
+    check("admin guruhiga yuborilmadi (arxiv alohida)",
+          not any(c == ADMIN_GROUP for c, _ in bot.sent))
     check("message_id saqlandi", bool(u["receipt_msg_id"]), f"-> {u['receipt_msg_id']}")
     check("havola saqlandi", (u["receipt_link"] or "").startswith("https://t.me/c/2233445566/"),
           f"-> {u['receipt_link']}")

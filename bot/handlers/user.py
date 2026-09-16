@@ -349,7 +349,9 @@ async def got_receipt(message: Message, state: FSMContext, db, sheets, bot, conf
     )
     markup = kb.review_kb(uid)
     targets = list(config.admin_ids)
-    if config.admin_group_id:
+    # Admin guruhida faqat ariza kartochkalari turadi. Chek u yerga alohida
+    # arxiv bo'lmagandagina boradi — aks holda guruh aralashib ketadi.
+    if config.admin_group_id and not config.receipt_archive_id:
         targets.append(config.admin_group_id)
 
     sent = 0
