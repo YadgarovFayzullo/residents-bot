@@ -98,6 +98,19 @@ async def main():
     check("rejim = off", none_s.mode == "off")
     check("upsert None", (await none_s.upsert({"user_id": 1})) is None)
 
+    print("\n【9】 Service rejimida qiymatlar formula bo'lib ketmaydi")
+    lit = SheetsSync._literal([
+        "1", "8192361257", "Ali Valiyev", "+998901234567", "@aliuz",
+        "2026-09-16 19:41:25", "=1+1", "@kimdir", "—",
+    ])
+    check("telefon plusi saqlandi", lit[3] == "'+998901234567", f"-> {lit[3]}")
+    check("formula matnga aylandi", lit[6] == "'=1+1", f"-> {lit[6]}")
+    check("@ bilan boshlangani ham", lit[7] == "'@kimdir", f"-> {lit[7]}")
+    check("sana tegilmadi", lit[5] == "2026-09-16 19:41:25", f"-> {lit[5]}")
+    check("raqam tegilmadi", lit[1] == "8192361257")
+    check("oddiy matn tegilmadi", lit[2] == "Ali Valiyev")
+    check("tire tegilmadi (manfiy ID uchun)", SheetsSync._literal(["-100123"])[0] == "-100123")
+
     await runner.cleanup()
     print("\n" + "="*60)
     print(f"NATIJA:  ✅ {PASS} ta o'tdi   ❌ {FAIL} ta xato")

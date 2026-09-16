@@ -208,6 +208,15 @@ class SheetsSync:
                 return i
         return None
 
+    @staticmethod
+    def _literal(values: list[str]) -> list[str]:
+        """USER_ENTERED rejimida Sheets '+'/'=' bilan boshlangan qiymatni
+        formula deb o'qiydi: '+998…' raqamga aylanib, plus yo'qoladi.
+        Apostrof bunday qiymatni matn qilib qoldiradi, sanalarga tegmaydi.
+        """
+        return [f"'{v}" if isinstance(v, str) and v[:1] in "+=@" else v
+                for v in values]
+
     def _upsert(self, user: dict[str, Any]) -> int:
         ws = self._connect()
         user_id = int(user["user_id"])
@@ -223,7 +232,7 @@ class SheetsSync:
             row_no = self._find_row(ws, user_id)
 
         if row_no:
-            values = row_from_user(user, row_no - 1)
+            values = self._literal(row_from_user(user, row_no - 1))
             ws.update(
                 values=[values],
                 range_name=f"A{row_no}:{_col(len(HEADERS))}{row_no}",
@@ -234,7 +243,7 @@ class SheetsSync:
         next_row = len(ws.col_values(2)) + 1
         if next_row < 2:
             next_row = 2
-        values = row_from_user(user, next_row - 1)
+        values = self._literal(row_from_user(user, next_row - 1))
         ws.update(
             values=[values],
             range_name=f"A{next_row}:{_col(len(HEADERS))}{next_row}",
