@@ -28,7 +28,7 @@ from ..db import (
 )
 from ..states import Form
 from ..validators import clean_full_name, clean_phone, clean_username
-from .group import resolve_group_id
+from .group import GROUP_KEY, resolve_group_id
 
 log = logging.getLogger(__name__)
 router = Router(name="user")
@@ -52,17 +52,26 @@ async def make_invite_link(user_id: int, db, bot, config) -> tuple[str | None, s
         return None, ""
 
     expires_at = dt.datetime.now() + dt.timedelta(days=config.invite_expire_days)
-    try:
-        invite = await bot.create_chat_invite_link(
-            chat_id=group_id,
-            name=f"user_{user_id}"[:32],
-            member_limit=1,                       # faqat bitta odam kira oladi
-            expire_date=expires_at,               # muddati tugagach ishlamaydi
-        )
-        return invite.invite_link, expires_at.strftime("%Y-%m-%d %H:%M:%S")
-    except Exception as e:
-        log.error("Taklif havolasini yaratib bo'lmadi (%s): %s", user_id, e)
-        return None, ""
+    for attempt in range(2):
+        try:
+            invite = await bot.create_chat_invite_link(
+                chat_id=group_id,
+                name=f"user_{user_id}"[:32],
+                member_limit=1,                       # faqat bitta odam kira oladi
+                expire_date=expires_at,               # muddati tugagach ishlamaydi
+            )
+            return invite.invite_link, expires_at.strftime("%Y-%m-%d %H:%M:%S")
+        except Exception as e:
+            # Oddiy guruh superguruhga o'tgan bo'lsa — yangi ID bilan qayta urinamiz
+            new_id = getattr(getattr(e, "parameters", None), "migrate_to_chat_id", None)
+            if new_id and attempt == 0:
+                log.warning("Guruh supergruppaga o'tgan: %s -> %s", group_id, new_id)
+                await db.set_setting(GROUP_KEY, str(new_id))
+                group_id = new_id
+                continue
+            log.error("Taklif havolasini yaratib bo'lmadi (%s): %s", user_id, e)
+            return None, ""
+    return None, ""
 
 
 def link_alive(user: dict) -> bool:
